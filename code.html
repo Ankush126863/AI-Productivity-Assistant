@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Productivity Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        .pulse-animation {
+            animation: pulse 2s infinite;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto p-4 max-w-4xl">
+        <!-- Header with Stats Summary -->
+        <header class="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-6 rounded-xl mb-6 shadow-lg">
+            <div class="flex items-center">
+                <div class="mr-4">
+                    <img src="https://placehold.co/80" alt="AI Analyzer - A futuristic dashboard interface showing productivity metrics" class="rounded-full border-4 border-white" />
+                </div>
+                <div>
+                    <h1 class="text-3xl font-bold">AI Productivity Assistant</h1>
+                    <div class="flex space-x-6 mt-2">
+                        <div>
+                            <div class="text-sm opacity-80">Productivity Score</div>
+                            <div id="productivityScore" class="text-2xl font-bold">--</div>
+                        </div>
+                        <div>
+                            <div class="text-sm opacity-80">Focus Time</div>
+                            <div id="focusTime" class="text-2xl font-bold">--</div>
+                        </div>
+                        <div>
+                            <div class="text-sm opacity-80">Task Velocity</div>
+                            <div id="taskVelocity" class="text-2xl font-bold">--</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Task Input Section -->
+            <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow">
+                <div class="flex mb-6">
+                    <input 
+                        id="taskInput" 
+                        type="text" 
+                        placeholder="What's your next task?" 
+                        class="flex-grow px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                    <button 
+                        id="addTaskButton" 
+                        class="ml-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center"
+                    >
+                        <span>Add Task</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-1" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Priority Selector -->
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Priority Level</label>
+                    <div class="flex space-x-2">
+                        <button class="priority-btn px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300" data-priority="low">Low</button>
+                        <button class="priority-btn px-4 py-2 rounded-lg bg-yellow-100 hover:bg-yellow-200" data-priority="medium">Medium</button>
+                        <button class="priority-btn px-4 py-2 rounded-lg bg-red-100 hover:bg-red-200" data-priority="high">High</button>
+                    </div>
+                </div>
+
+                <!-- Estimated Time -->
+                <div class="mb-6">
+                    <label for="estimatedTime" class="block text-sm font-medium text-gray-700 mb-2">Estimated Time (minutes)</label>
+                    <input 
+                        type="number" 
+                        id="estimatedTime" 
+                        min="5" 
+                        value="30" 
+                        class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                </div>
+
+                <!-- Task List -->
+                <div id="taskList" class="space-y-3"></div>
+
+                <!-- Task Controls -->
+                <div class="mt-6 pt-4 border-t border-gray-200 flex justify-between">
+                    <div id="taskCount" class="text-gray-600">0 tasks</div>
+                    <button id="clearCompleted" class="text-blue-600 hover:text-blue-800">Clear completed</button>
+                </div>
+            </div>
+
+            <!-- AI Analysis Panel -->
+            <div class="bg-white p-6 rounded-xl shadow">
+                <h2 class="text-xl font-bold mb-4 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                    </svg>
+                    AI Analysis
+                </h2>
+                
+                <!-- Time Allocation Chart -->
+                <div class="mb-6">
+                    <h3 class="font-medium mb-2">Time Allocation</h3>
+                    <canvas id="timeChart" height="150"></canvas>
+                </div>
+
+                <!-- Productivity Trends Chart -->
+                <div class="mb-6">
+                    <h3 class="font-medium mb-2">Your Productivity Trend</h3>
+                    <canvas id="productivityChart" height="150"></canvas>
+                </div>
+
+                <!-- AI Recommendations -->
+                <div class="bg-blue-50 p-4 rounded-lg">
+                    <h3 class="font-medium mb-2 flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-600 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                        </svg>
+                        Smart Recommendations
+                    </h3>
+                    <div id="aiRecommendations" class="text-sm">
+                        <p class="mb-2">Add your first task to get personalized recommendations!</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let tasks = [];
+        let chartTime, chartProductivity;
+        let currentPriority = 'medium';
+        let taskHistory = [];
+        
+        // DOM Elements
+        const taskInput = document.getElementById('taskInput');
+        const addTaskButton = document.getElementById('addTaskButton');
+        const taskList = document.getElementById('taskList');
+        const taskCount = document.getElementById('taskCount');
+        const clearCompleted = document.getElementById('clearCompleted');
+        const aiRecommendations = document.getElementById('aiRecommendations');
+        const productivityScore = document.getElementById('productivityScore');
+        const focusTime = document.getElementById('focusTime');
+        const taskVelocity = document.getElementById('taskVelocity');
+        const priorityButtons = document.querySelectorAll('.priority-btn');
+        const estimatedTimeInput = document.getElementById('estimatedTime');
+
+        // Initialize charts
+        function initCharts() {
+            const ctxTime = document.getElementById('timeChart').getContext('2d');
+            chartTime = new Chart(ctxTime, {
+                type: 'pie',
+                data: {
+                    labels: ['Work', 'Personal', 'Health', 'Other'],
+                    datasets: [{
+                        data: [0, 0, 0, 0],
+                        backgroundColor: ['#3B82F6', '#10B981', '#F59E0B', '#9CA3AF'],
+                        borderWidth: 0
+                    }]
+                },
+                options: { responsive: true }
+            });
+
+            const ctxProductivity = document.getElementById('productivityChart').getContext('2d');
+            chartProductivity = new Chart(ctxProductivity, {
+                type: 'line',
+                data: {
+                    labels: Array(7).fill('').map((_, i) => `Day ${i+1}`),
+                    datasets: [{
+                        label: 'Completed Tasks',
+                        data: Array(7).fill(0),
+                        borderColor: '#3B82F6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options: { responsive: true }
+            });
+        }
+
+        // Set priority
+        priorityButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                priorityButtons.forEach(b => b.classList.remove('ring-2', 'ring-blue-500'));
+                btn.classList.add('ring-2', 'ring-blue-500');
+                currentPriority = btn.dataset.priority;
+            });
+        });
+
+        // Set medium as default priority
+        document.querySelector('.priority-btn[data-priority="medium"]').classList.add('ring-2', 'ring-blue-500');
+
+        // Add Task
+        addTaskButton.addEventListener('click', addNewTask);
+        taskInput.addEventListener('keypress', (e) => e.key === 'Enter' && addNewTask());
+
+        function addNewTask() {
+            const taskText = taskInput.value.trim();
+            const estimatedTime = parseInt(estimatedTimeInput.value) || 30;
+            
+            if (taskText) {
+                const task = {
+                    id: Date.now(),
+                    text: taskText,
+                    completed: false,
+                    priority: currentPriority,
+                    estimatedTime: estimatedTime,
+                    createdAt: new Date(),
+                    completedAt: null
+                };
+                
+                tasks.push(task);
+                renderTask(task);
+                taskInput.value = '';
+                updateStats();
+                analyzeProductivity();
+            }
+        }
+
+        // Render Task
+        function renderTask(task) {
+            const taskItem = document.createElement('div');
+            taskItem.className = `task-item flex items-start p-4 rounded-lg border border-gray-200 ${task.completed ? 'bg-gray-50' : 'bg-white'}`;
+            taskItem.dataset.id = task.id;
+            
+            const priorityColors = {
+                low: 'bg-gray-200',
+                medium: 'bg-yellow-100',
+                high: 'bg-red-100'
+            };
+            
+            taskItem.innerHTML = `
+                <div class="flex items-center h-5 mr-3">
+                    <input 
+                        type="checkbox" 
+                        ${task.completed ? 'checked' : ''} 
+                        onchange="toggleTaskCompletion(${task.id})"
+                        class="form-checkbox h-4 w-4 text-blue-600 rounded focus:ring-blue-500"
+                    >
+                </div>
+                <div class="flex-grow">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="${task.completed ? 'line-through text-gray-400' : 'text-gray-800'}">${task.text}</span>
+                            <div class="flex items-center mt-1">
+                                <span class="text-xs px-2 py-1 rounded-full ${priorityColors[task.priority]} mr-2">
+                                    ${task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
+                                </span>
+                                <span class="text-xs text-gray-500">
+                                    ${task.estimatedTime} min
+                                </span>
+                            </div>
+                        </div>
+                        <button 
+                            onclick="deleteTask(${task.id})" 
+                            class="text-gray-400 hover:text-red-500 ml-2"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="mt-2 flex items-center text-xs text-gray-500">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Created: ${formatDate(task.createdAt)}
+                    </div>
+                </div>
+            `;
+            
+            taskList.appendChild(taskItem);
+            updateTaskCount();
+        }
+
+        // Toggle task completion
+        window.toggleTaskCompletion = function(taskId) {
+            const task = tasks.find(t => t.id === taskId);
+            if (task) {
+                task.completed = !task.completed;
+                task.completedAt = task.completed ? new Date() : null;
+                
+                // Update in task history
+                if (task.completed) {
+                    taskHistory.push({
+                        taskId: task.id,
+                        completedAt: task.completedAt,
+                        timeSpent: task.estimatedTime * 0.8 + Math.random() * task.estimatedTime * 0.4 // Simulate actual time spent
+                    });
+                } else {
+                    taskHistory = taskHistory.filter(t => t.taskId !== task.id);
+                }
+                
+                updateTaskDisplay(task.id);
+                updateStats();
+                analyzeProductivity();
+            }
+        };
+
+        // Update task display
+        function updateTaskDisplay(taskId) {
+            const task = tasks.find(t => t.id === taskId);
+            const taskElement = document.querySelector(`[data-id="${taskId}"]`);
+            
+            if (taskElement && task) {
+                taskElement.className = `task-item flex items-start p-4 rounded-lg border border-gray-200 ${task.completed ? 'bg-gray-50' : 'bg-white'}`;
+                
+                const textElement = taskElement.querySelector('span');
+                textElement.className = task.completed ? 'line-through text-gray-400' : 'text-gray-800';
+                
+                const checkbox = taskElement.querySelector('input[type="checkbox"]');
+                checkbox.checked = task.completed;
+                
+                if (task.completed && task.completedAt) {
+                    let dateInfo = taskElement.querySelector('.date-info');
+                    if (!dateInfo) {
+                        dateInfo = document.createElement('div');
+                        dateInfo.className = 'mt-1 text-xs text-gray-500 flex items-center';
+                        taskElement.querySelector('div > div:nth-child(2)').appendChild(dateInfo);
+                    }
+                    dateInfo.innerHTML = `
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                        Completed: ${formatDate(task.completedAt)} (${Math.round(task.estimatedTime)} min)
+                    `;
+                }
+            }
+        }
+
+        // Delete task
+        window.deleteTask = function(taskId) {
+            tasks = tasks.filter(t => t.id !== taskId);
+            taskHistory = taskHistory.filter(t => t.taskId !== taskId);
+            document.querySelector(`[data-id="${taskId}"]`)?.remove();
+            updateStats();
+            analyzeProductivity();
+            updateTaskCount();
+        };
+
+        // Clear completed tasks
+        clearCompleted.addEventListener('click', () => {
+            tasks = tasks.filter(t => !t.completed);
+            renderTaskList();
+            updateStats();
+            analyzeProductivity();
+        });
+
+        // Render all tasks
+        function renderTaskList() {
+            taskList.innerHTML = '';
+            tasks.forEach(task => renderTask(task));
+        }
+
+        // Update task count
+        function updateTaskCount() {
+            const total = tasks.length;
+            const completed = tasks.filter(t => t.completed).length;
+            taskCount.textContent = `${completed}/${total} tasks completed`;
+        }
+
+        // Update stats
+        function updateStats() {
+            const completedTasks = tasks.filter(t => t.completed).length;
+            const totalTasks = tasks.length;
+            const completionRatio = totalTasks > 0 ? completedTasks / totalTasks : 0;
+            
+            // Productivity score (0-100)
+            const score = Math.round(completionRatio * 70 + 
+                                   (tasks.filter(t => t.priority === 'high' && t.completed).length * 10) + 
+                                   (Math.random() * 20)); // Some variability
+            
+            // Estimated focus time (sum of all estimated times)
+            const totalEstimatedTime = tasks.reduce((sum, t) => sum + (t.completed ? 0 : t.estimatedTime), 0);
+            
+            // Task velocity (tasks completed per day simulated)
+            const velocity = taskHistory.length > 0 
+                ? Math.round(taskHistory.reduce((sum, t) => sum + t.timeSpent, 0) / taskHistory.length) 
+                : 0;
+            
+            productivityScore.textContent = `${score}`;
+            focusTime.textContent = `${totalEstimatedTime} min`;
+            taskVelocity.textContent = `${velocity} min/task`;
+            
+            // Update charts
+            updateCharts();
+        }
+
+        // Update charts
+        function updateCharts() {
+            // Time allocation by priority
+            const timeByPriority = {
+                low: tasks.filter(t => t.priority === 'low').reduce((sum, t) => sum + t.estimatedTime, 0),
+                medium: tasks.filter(t => t.priority === 'medium').reduce((sum, t) => sum + t.estimatedTime, 0),
+                high: tasks.filter(t => t.priority === 'high').reduce((sum, t) => sum + t.estimatedTime, 0)
+            };
+            
+            chartTime.data.datasets[0].data = [
+                timeByPriority.high,
+                timeByPriority.medium,
+                timeByPriority.low,
+                tasks.reduce((sum, t) => sum + t.estimatedTime, 0) * 0.1 // Other category
+            ];
+            chartTime.update();
+            
+            // Productivity trend (simulated week)
+            if (taskHistory.length > 0) {
+                const daysData = Array(7).fill(0);
+                const now = new Date();
+                
+                taskHistory.forEach(t => {
+                    const dayDiff = Math.floor((now - t.completedAt) / (1000 * 60 * 60 * 24));
+                    if (dayDiff < 7) {
+                        daysData[6 - dayDiff]++;
+                    }
+                });
+                
+                chartProductivity.data.datasets[0].data = daysData;
+                chartProductivity.update();
+            }
+        }
+
+        // Analyze productivity and make recommendations
+        function analyzeProductivity() {
+            const recommendations = [];
+            
+            if (tasks.length === 0) {
+                aiRecommendations.innerHTML = '<p>Add your first task to get personalized recommendations!</p>';
+                return;
+            }
+            
+            // Check task distribution
+            const priorityCounts = {
+                high: tasks.filter(t => t.priority === 'high').length,
+                medium: tasks.filter(t => t.priority === 'medium').length,
+                low: tasks.filter(t => t.priority === 'low').length
+            };
+            
+            if (priorityCounts.high / tasks.length > 0.5) {
+                recommendations.push('You have many high-priority tasks. Consider delegating some or breaking them into smaller steps.');
+            }
+            
+            // Check completion rate
+            const completionRate = tasks.filter(t => t.completed).length / tasks.length;
+            if (completionRate < 0.3) {
+                recommendations.push('Your completion rate is low. Try focusing on 2-3 key tasks each day.');
+            } else if (completionRate > 0.8) {
+                recommendations.push('Great work! You\'re completing most of your tasks. Consider adding more challenging goals.');
+            }
+            
+            // Check time estimates
+            const avgEstimate = tasks.reduce((sum, t) => sum + t.estimatedTime, 0) / tasks.length;
+            if (avgEstimate > 60) {
+                recommendations.push('Many tasks take over 1 hour. Breaking them into 30-minute chunks can improve focus.');
+            }
+            
+            // Check overdue tasks
+            const overdueTasks = tasks.filter(t => !t.completed && (new Date() - t.createdAt) > 2 * 24 * 60 * 60 * 1000);
+            if (overdueTasks.length > 0) {
+                recommendations.push(`You have ${overdueTasks.length} tasks pending for more than 2 days. Re-evaluate their priority.`);
+            }
+            
+            // Generate recommendations HTML
+            if (recommendations.length > 0) {
+                aiRecommendations.innerHTML = recommendations.map(r => 
+                    `<p class="mb-2 flex items-start">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-blue-600 mr-2 mt-0.5 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                        </svg>
+                        ${r}
+                    </p>`
+                ).join('');
+            } else {
+                aiRecommendations.innerHTML = '<p>Your task list looks well-balanced! Keep up the good work.</p>';
+            }
+        }
+
+        // Format date
+        function formatDate(date) {
+            if (!date) return '';
+            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' ' +
+                   date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+        }
+
+        // Initialize
+        function init() {
+            initCharts();
+            
+            // Add some sample tasks
+            const sampleTasks = [
+                { text: 'Complete project proposal', priority: 'high', estimatedTime: 90 },
+                { text: 'Review team updates', priority: 'medium', estimatedTime: 30 },
+                { text: 'Schedule dentist appointment', priority: 'low', estimatedTime: 15 }
+            ];
+            
+            setTimeout(() => {
+                sampleTasks.forEach(task => {
+                    tasks.push({
+                        id: Date.now(),
+                        text: task.text,
+                        completed: Math.random() > 0.7,
+                        priority: task.priority,
+                        estimatedTime: task.estimatedTime,
+                        createdAt: new Date(Date.now() - Math.floor(Math.random() * 7 * 24 * 60 * 60 * 1000)),
+                        completedAt: Math.random() > 0.7 ? new Date(Date.now() - Math.floor(Math.random() * 3 * 24 * 60 * 60 * 1000)) : null
+                    });
+                });
+                
+                // Add some task history
+                tasks.filter(t => t.completed).forEach(t => {
+                    taskHistory.push({
+                        taskId: t.id,
+                        completedAt: t.completedAt,
+                        timeSpent: t.estimatedTime * 0.8 + Math.random() * t.estimatedTime * 0.4
+                    });
+                });
+                
+                renderTaskList();
+                updateStats();
+                analyzeProductivity();
+            }, 1000);
+        }
+
+        init();
+    </script>
+</body>
+</html>
