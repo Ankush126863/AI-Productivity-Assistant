@@ -136,11 +136,17 @@
     </div>
 
     <script>
+        // ==========================================
+        // GEMINI API CONFIGURATION
+        // ==========================================
+        const GEMINI_API_KEY = "AQ.Ab8RN6LGJ3Mli4pwk7Tf0Jtju4GIV-42WfgiMtfi9nuh9vqCBA";
+
         // Global state
         let tasks = [];
         let chartTime, chartProductivity;
         let currentPriority = 'medium';
         let taskHistory = [];
+        let currentAnalysisId = 0;
         
         // DOM Elements
         const taskInput = document.getElementById('taskInput');
@@ -431,59 +437,125 @@
             }
         }
 
-        // Analyze productivity and make recommendations
-        function analyzeProductivity() {
-            const recommendations = [];
-            
-            if (tasks.length === 0) {
-                aiRecommendations.innerHTML = '<p>Add your first task to get personalized recommendations!</p>';
-                return;
+        async function analyzeProductivity() {
+    const recommendationBox = document.getElementById("aiRecommendations");
+
+    if (!recommendationBox) return;
+
+    if (!tasks || tasks.length === 0) {
+        recommendationBox.textContent = "Add some tasks to get AI-powered recommendations.";
+        return;
+    }
+
+    recommendationBox.textContent = "🤖 AI is analyzing your tasks...";
+
+    const taskSummary = tasks.map(t => ({
+        task: t.text,
+        priority: t.priority,
+        estimatedTimeMinutes: t.estimatedTime,
+        completed: t.completed,
+        createdAt: t.createdAt
+            ? new Date(t.createdAt).toISOString()
+            : null
+    }));
+
+    const prompt = `
+You are an expert productivity coach.
+
+Analyze the user's current task list and provide 3 to 5 concise, practical recommendations.
+
+Task data:
+${JSON.stringify(taskSummary, null, 2)}
+
+Consider:
+1. The highest-priority unfinished task.
+2. Total workload and estimated time.
+3. Long-pending unfinished tasks.
+4. Large tasks that may need to be broken into smaller tasks.
+5. Balance between completed and incomplete tasks.
+6. Whether the user has too many high-priority tasks.
+7. Which task the user should focus on next.
+
+Rules:
+- Give exactly 3 to 5 recommendations.
+- Each recommendation must be concise and actionable.
+- Start every recommendation with "•".
+- Do not use markdown headings.
+- Do not explain your analysis.
+- Do not invent information that is not present in the task data.
+`;
+
+    try {
+        const response = await fetch(
+            "https://generativelanguage.googleapis.com/v1beta/interactions",
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-goog-api-key": GEMINI_API_KEY.trim()
+                },
+                body: JSON.stringify({
+                    model: "gemini-3.6-flash",
+                    input: prompt
+                })
             }
-            
-            // Check task distribution
-            const priorityCounts = {
-                high: tasks.filter(t => t.priority === 'high').length,
-                medium: tasks.filter(t => t.priority === 'medium').length,
-                low: tasks.filter(t => t.priority === 'low').length
-            };
-            
-            if (priorityCounts.high / tasks.length > 0.5) {
-                recommendations.push('You have many high-priority tasks. Consider delegating some or breaking them into smaller steps.');
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                data?.error?.message ||
+                `API request failed with status ${response.status}`
+            );
+        }
+
+        let aiText = "";
+
+        // Current Interactions API response format
+        if (Array.isArray(data.steps)) {
+            for (const step of data.steps) {
+                if (
+                    step.type === "model_output" &&
+                    Array.isArray(step.content)
+                ) {
+                    for (const content of step.content) {
+                        if (content.type === "text" && content.text) {
+                            aiText += content.text;
+                        }
+                    }
+                }
             }
-            
-            // Check completion rate
-            const completionRate = tasks.filter(t => t.completed).length / tasks.length;
-            if (completionRate < 0.3) {
-                recommendations.push('Your completion rate is low. Try focusing on 2-3 key tasks each day.');
-            } else if (completionRate > 0.8) {
-                recommendations.push('Great work! You\'re completing most of your tasks. Consider adding more challenging goals.');
-            }
-            
-            // Check time estimates
-            const avgEstimate = tasks.reduce((sum, t) => sum + t.estimatedTime, 0) / tasks.length;
-            if (avgEstimate > 60) {
-                recommendations.push('Many tasks take over 1 hour. Breaking them into 30-minute chunks can improve focus.');
-            }
-            
-            // Check overdue tasks
-            const overdueTasks = tasks.filter(t => !t.completed && (new Date() - t.createdAt) > 2 * 24 * 60 * 60 * 1000);
-            if (overdueTasks.length > 0) {
-                recommendations.push(`You have ${overdueTasks.length} tasks pending for more than 2 days. Re-evaluate their priority.`);
-            }
-            
-            // Generate recommendations HTML
-            if (recommendations.length > 0) {
-                aiRecommendations.innerHTML = recommendations.map(r => 
-                    `<p class="mb-2 flex items-start">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-blue-600 mr-2 mt-0.5 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
-                        </svg>
-                        ${r}
-                    </p>`
-                ).join('');
-            } else {
-                aiRecommendations.innerHTML = '<p>Your task list looks well-balanced! Keep up the good work.</p>';
-            }
+        }
+
+        // Fallback for older response format
+        if (!aiText && Array.isArray(data.outputs)) {
+            aiText = data.outputs
+                .filter(output => output.type === "text")
+                .map(output => output.text)
+                .join("\n");
+        }
+
+        if (!aiText.trim()) {
+            throw new Error("Gemini returned an empty response.");
+        }
+
+        recommendationBox.textContent = aiText.trim();
+
+    } catch (error) {
+        console.error("AI Recommendation Error:", error);
+
+        recommendationBox.textContent =
+            "⚠️ AI Recommendation Error:\n\n" +
+            error.message +
+            "\n\nCheck your GEMINI_API_KEY and internet connection.";
+    }
+}
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
         }
 
         // Format date
@@ -522,7 +594,7 @@
                     taskHistory.push({
                         taskId: t.id,
                         completedAt: t.completedAt,
-                        timeSpent: t.estimatedTime * 0.8 + Math.random() * t.estimatedTime * 0.4
+                        timeSpent: task.estimatedTime * 0.8 + Math.random() * task.estimatedTime * 0.4
                     });
                 });
                 
@@ -536,3 +608,4 @@
     </script>
 </body>
 </html>
+
